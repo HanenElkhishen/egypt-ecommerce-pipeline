@@ -8,6 +8,9 @@ models:
         data_tests:
           - unique
           - not_null
+      - name: order_total_egp
+        data_tests:
+          - positive_value
 
   - name: dim_customers
     description: One row per customer with order history metrics.

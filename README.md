@@ -66,15 +66,27 @@ signal and not a pipeline-breaking error.
   mixed-case statuses) give the data tests real problems to catch.
 - **Secrets stay out of Git:** credentials live in `.env`, which is git-ignored.
   dbt reads connection details from environment variables.
+- **Ephemeral CI database:** a PostgreSQL service container is created per
+  pipeline, so tests are isolated and reproducible.
+- **Merge-request pipelines only:** avoids duplicate pipelines and keeps
+  `main` protected by required checks.
 
 ## CI/CD
+
+The pipeline runs on every merge request and on `main`:
 
 | Stage | Job | What it checks |
 |-------|-----|----------------|
 | lint | `ruff check` / `ruff format --check` | Code errors and formatting |
 | test | `pytest` | Unit tests for data generation |
+| dbt | `dbt_build` | Full end-to-end run: starts a throwaway PostgreSQL service, creates the schemas, loads generated data, then runs `dbt build` (models + tests) |
 
-Merge requests cannot be merged unless the pipeline passes.
+Each run uses a fresh, disposable database, so results never depend on previous
+runs. A failing dbt test fails the pipeline and blocks the merge, so bad data
+logic cannot reach `main`. Warnings (such as missing emails) are reported
+without failing the build.
+
+The `dbt_build` job saves `run_results.json` and logs as artifacts for debugging.
 
 ## Workflow
 

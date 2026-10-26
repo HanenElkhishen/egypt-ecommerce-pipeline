@@ -49,7 +49,9 @@ dbt_build:
   script:
     - psql -v ON_ERROR_STOP=1 -h postgres -U ci_user -d ecommerce -f docker/init/01_create_schemas.sql
     - python ingestion/generate_and_load.py
+    - python ingestion/check_raw.py
     - cd dbt_project
+    - dbt source freshness --profiles-dir .
     - dbt build --profiles-dir .
   artifacts:
     when: always
