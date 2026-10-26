@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: One row per order with item counts and order total in EGP.
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_customers
+    description: One row per customer with order history metrics.
+    columns:
+      - name: customer_id
+        data_tests:
+          - unique
+          - not_null
+
+  - name: daily_sales
+    description: Revenue and order counts per day (completed orders only).
+    columns:
+      - name: order_date
+        data_tests:
+          - unique
+          - not_null
