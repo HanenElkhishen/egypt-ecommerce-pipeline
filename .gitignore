@@ -9,6 +9,4 @@ target/
 dbt_packages/
 logs/
 egypt-ecommerce-pipeline/
-
-.vscode/
 *.session.sql
