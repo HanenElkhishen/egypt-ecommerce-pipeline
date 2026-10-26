@@ -17,8 +17,18 @@ fake = Faker()
 Faker.seed(SEED)
 random.seed(SEED)
 
-CITIES = ["Cairo", "Giza", "Alexandria", "Mansoura", "Shibin El Kom",
-          "Tanta", "Aswan", "Luxor", "Port Said", "Suez"]
+CITIES = [
+    "Cairo",
+    "Giza",
+    "Alexandria",
+    "Mansoura",
+    "Shibin El Kom",
+    "Tanta",
+    "Aswan",
+    "Luxor",
+    "Port Said",
+    "Suez",
+]
 STATUSES = ["completed", "completed", "completed", "shipped", "cancelled", "returned"]
 
 CATALOG = {
@@ -62,10 +72,16 @@ def generate_customers():
     rows = []
     for customer_id in range(1, N_CUSTOMERS + 1):
         email = fake.email() if random.random() > 0.03 else None  # ~3% missing emails
-        rows.append((
-            customer_id, fake.first_name(), fake.last_name(), email,
-            random.choice(CITIES), fake.date_between(start_date="-2y", end_date="-30d"),
-        ))
+        rows.append(
+            (
+                customer_id,
+                fake.first_name(),
+                fake.last_name(),
+                email,
+                random.choice(CITIES),
+                fake.date_between(start_date="-2y", end_date="-30d"),
+            )
+        )
     rows.extend(random.sample(rows, 5))  # intentional duplicates
     return rows
 
@@ -88,14 +104,19 @@ def generate_orders_and_items(products):
         status = random.choice(STATUSES)
         if random.random() < 0.01:
             status = status.upper()  # intentional inconsistent casing
-        orders.append((
-            order_id, random.randint(1, N_CUSTOMERS),
-            fake.date_time_between(start_date="-1y", end_date="now"), status,
-        ))
+        orders.append(
+            (
+                order_id,
+                random.randint(1, N_CUSTOMERS),
+                fake.date_time_between(start_date="-1y", end_date="now"),
+                status,
+            )
+        )
         for _ in range(random.randint(1, 4)):
             product_id = random.randint(1, N_PRODUCTS)
-            items.append((item_id, order_id, product_id,
-                          random.randint(1, 3), price_by_id[product_id]))
+            items.append(
+                (item_id, order_id, product_id, random.randint(1, 3), price_by_id[product_id])
+            )
             item_id += 1
     return orders, items
 
@@ -119,16 +140,22 @@ def main():
     try:
         with conn.cursor() as cur:
             cur.execute(DDL)
-            load_table(cur, "customers",
-                       ["customer_id", "first_name", "last_name", "email", "city", "signup_date"],
-                       customers)
-            load_table(cur, "products",
-                       ["product_id", "product_name", "category", "price_egp"], products)
-            load_table(cur, "orders",
-                       ["order_id", "customer_id", "order_date", "status"], orders)
-            load_table(cur, "order_items",
-                       ["order_item_id", "order_id", "product_id", "quantity", "unit_price_egp"],
-                       items)
+            load_table(
+                cur,
+                "customers",
+                ["customer_id", "first_name", "last_name", "email", "city", "signup_date"],
+                customers,
+            )
+            load_table(
+                cur, "products", ["product_id", "product_name", "category", "price_egp"], products
+            )
+            load_table(cur, "orders", ["order_id", "customer_id", "order_date", "status"], orders)
+            load_table(
+                cur,
+                "order_items",
+                ["order_item_id", "order_id", "product_id", "quantity", "unit_price_egp"],
+                items,
+            )
         conn.commit()
     finally:
         conn.close()
