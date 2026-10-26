@@ -1,6 +1,12 @@
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
 stages:
   - lint
   - test
+  - dbt
 
 default:
   image: python:3.12-slim
@@ -25,3 +31,29 @@ test:
   script:
     - pip install -r requirements-dev.txt
     - pytest -v
+
+dbt_build:
+  stage: dbt
+  services:
+    - postgres:16
+  variables:
+    POSTGRES_DB: ecommerce
+    POSTGRES_USER: ci_user
+    POSTGRES_PASSWORD: ci_password
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    PGPASSWORD: ci_password
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq postgresql-client
+    - pip install -r requirements.txt -r requirements-dbt.txt
+  script:
+    - psql -v ON_ERROR_STOP=1 -h postgres -U ci_user -d ecommerce -f docker/init/01_create_schemas.sql
+    - python ingestion/generate_and_load.py
+    - cd dbt_project
+    - dbt build --profiles-dir .
+  artifacts:
+    when: always
+    paths:
+      - dbt_project/target/run_results.json
+      - dbt_project/logs/
+    expire_in: 1 week
