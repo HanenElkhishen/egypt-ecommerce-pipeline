@@ -70,6 +70,34 @@ signal and not a pipeline-breaking error.
   pipeline, so tests are isolated and reproducible.
 - **Merge-request pipelines only:** avoids duplicate pipelines and keeps
   `main` protected by required checks.
+- **Fail fast:** cheap source checks run before dbt, so broken input stops the
+  pipeline before expensive transformations.
+- **Severity is a decision, not a default:** each test is deliberately set to
+  error or warn depending on whether it makes the data unusable.
+
+
+## Data quality
+
+Quality is enforced in three layers, each catching a different class of problem:
+
+| Layer | Tool | Examples |
+|-------|------|----------|
+| Source checks | `ingestion/check_raw.py` | Tables not empty, no orphan order items, no non-positive quantities |
+| Model tests | dbt tests | Unique/not-null keys, referential integrity, accepted statuses, positive prices, revenue reconciliation between marts and staging, no future-dated orders, minimum row volume |
+| Freshness | `dbt source freshness` | Warns if raw data is older than 24h, fails after 72h |
+
+
+### Error vs. warning
+
+- **Error** (blocks the merge): the data would mislead reports, e.g. duplicate
+  order IDs, negative prices, totals that do not reconcile.
+- **Warning** (reported only): a real issue that does not invalidate the
+  pipeline, e.g. missing emails, or orders placed before the customer's signup
+  date (a known limitation of the synthetic generator).
+
+Custom tests live in `dbt_project/tests/`: a reusable generic test
+(`positive_value`) and singular tests for specific business rules.
+
 
 ## CI/CD
 
