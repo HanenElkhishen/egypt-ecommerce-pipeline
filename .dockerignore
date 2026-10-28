@@ -1,0 +1,16 @@
+.git/
+.venv/
+.env
+.vscode/
+__pycache__/
+*.pyc
+.cache/
+.ruff_cache/
+.pytest_cache/
+dbt_project/target/
+dbt_project/logs/
+dbt_project/dbt_packages/
+dbt_project/.user.yml
+docker/
+tests/
+*.session.sql
