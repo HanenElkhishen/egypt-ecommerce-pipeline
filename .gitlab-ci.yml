@@ -7,6 +7,7 @@ stages:
   - lint
   - test
   - dbt
+  - package
 
 default:
   image: python:3.12-slim
@@ -60,16 +61,7 @@ dbt_build:
       - dbt_project/logs/
     expire_in: 1 week
 
-
-    stages:
-  - lint
-  - test
-  - dbt
-  - package
-
-
-
-  build_image:
+build_image:
   stage: package
   image: docker:27
   services:
