@@ -8,6 +8,8 @@ stages:
   - test
   - dbt
   - package
+  - deploy_dev
+  - deploy_prod
 
 default:
   image: python:3.12-slim
@@ -78,3 +80,36 @@ build_image:
         docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA"
         docker push "$CI_REGISTRY_IMAGE:latest"
       fi
+
+.deploy:
+  image:
+    name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+    entrypoint: [""]
+  variables:
+    GIT_STRATEGY: none
+    POSTGRES_PORT: "5432"
+    PGSSLMODE: require
+  cache: []
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - cd /app
+    - python ingestion/generate_and_load.py
+    - cd dbt_project
+    - dbt build --profiles-dir .
+
+deploy_dev:
+  extends: .deploy
+  stage: deploy_dev
+  environment:
+    name: dev
+
+deploy_prod:
+  extends: .deploy
+  stage: deploy_prod
+  environment:
+    name: prod
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: false
