@@ -23,6 +23,8 @@ Python, PostgreSQL 16, Docker Compose, dbt, GitLab CI/CD, ruff, pytest.
 | `dbt_project/` | dbt staging and marts models, tests and docs |
 | `tests/` | Unit tests for the ingestion logic |
 | `.gitlab-ci.yml` | CI pipeline definition |
+Dockerfile
+load_env.ps1
 
 ## Getting started
 
@@ -74,6 +76,14 @@ signal and not a pipeline-breaking error.
   pipeline before expensive transformations.
 - **Severity is a decision, not a default:** each test is deliberately set to
   error or warn depending on whether it makes the data unusable.
+- **Secrets are never baked into the image:** `.env` is excluded via
+  `.dockerignore` and credentials are injected as environment variables at runtime.
+- **Layer caching:** dependencies are installed before the code is copied, so
+  code-only changes rebuild in seconds.
+- **Non-root container user** to follow least-privilege practice.
+- **Build on merge requests, push only from `main`:** broken Dockerfiles are
+  caught early, but only reviewed code is published.
+- **Immutable commit-SHA tags** alongside `latest` make every release traceable.
 
 
 ## Data quality
@@ -99,7 +109,28 @@ Custom tests live in `dbt_project/tests/`: a reusable generic test
 (`positive_value`) and singular tests for specific business rules.
 
 
+## Docker image
+
+The project is packaged as a single image (Python, dbt, ingestion code) and
+published to the GitLab Container Registry.
+
+```bash
+docker build -t egypt-ecommerce-pipeline:local .
+docker run --rm --env-file .env -e POSTGRES_HOST=host.docker.internal \
+  egypt-ecommerce-pipeline:local                     # load data
+docker run --rm --env-file .env -e POSTGRES_HOST=host.docker.internal \
+  -w /app/dbt_project egypt-ecommerce-pipeline:local \
+  dbt build --profiles-dir .                         # run dbt
+```
+
+Image tags: `latest` (current `main`) and the commit SHA (for reproducible
+rollbacks).
+
+
 ## CI/CD
+
+| package | `build_image` | Builds the Docker image on every merge request; pushes it to the registry from `main` only |
+
 
 The pipeline runs on every merge request and on `main`:
 

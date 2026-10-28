@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-dbt.txt
 # Project code
 COPY ingestion/ ./ingestion/
 COPY dbt_project/ ./dbt_project/
+COPY missing_folder/ ./missing_folder/
 
 # Run as a non-root user
 RUN useradd --create-home appuser && chown -R appuser /app
