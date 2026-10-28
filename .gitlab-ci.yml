@@ -24,6 +24,8 @@ cache:
 
 lint:
   stage: lint
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
   script:
     - pip install ruff
     - ruff check .
@@ -31,12 +33,16 @@ lint:
 
 test:
   stage: test
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
   script:
     - pip install -r requirements-dev.txt
     - pytest -v
 
 dbt_build:
   stage: dbt
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
   services:
     - postgres:16
   variables:
@@ -56,15 +62,21 @@ dbt_build:
     - cd dbt_project
     - dbt source freshness --profiles-dir .
     - dbt build --profiles-dir .
+    - dbt docs generate --profiles-dir .
   artifacts:
     when: always
     paths:
       - dbt_project/target/run_results.json
+      - dbt_project/target/index.html
+      - dbt_project/target/manifest.json
+      - dbt_project/target/catalog.json
       - dbt_project/logs/
     expire_in: 1 week
 
 build_image:
   stage: package
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
   image: docker:27
   services:
     - docker:27-dind
@@ -81,6 +93,19 @@ build_image:
         docker push "$CI_REGISTRY_IMAGE:latest"
       fi
 
+pages:
+  stage: package
+  needs: [dbt_build]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
+  script:
+    - mkdir -p public
+    - cp dbt_project/target/index.html dbt_project/target/manifest.json dbt_project/target/catalog.json public/
+  pages: true
+  artifacts:
+    paths:
+      - public
+
 .deploy:
   image:
     name: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
@@ -91,7 +116,7 @@ build_image:
     PGSSLMODE: require
   cache: []
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
   script:
     - cd /app
     - python ingestion/generate_and_load.py
@@ -110,6 +135,23 @@ deploy_prod:
   environment:
     name: prod
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
       when: manual
       allow_failure: false
+
+scheduled_refresh:
+  extends: .deploy
+  stage: deploy_dev
+  image:
+    name: $CI_REGISTRY_IMAGE:latest
+    entrypoint: [""]
+  environment:
+    name: dev
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  script:
+    - cd /app
+    - python ingestion/generate_and_load.py
+    - cd dbt_project
+    - dbt source freshness --profiles-dir .
+    - dbt build --profiles-dir .
