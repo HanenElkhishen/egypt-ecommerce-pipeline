@@ -8,5 +8,6 @@ egypt_ecommerce:
       user: "{{ env_var('POSTGRES_USER') }}"
       password: "{{ env_var('POSTGRES_PASSWORD') }}"
       dbname: "{{ env_var('POSTGRES_DB') }}"
+      sslmode: "{{ env_var('PGSSLMODE', 'prefer') }}"
       schema: staging
       threads: 4
